@@ -11,6 +11,8 @@ statement: use_stmt
          | apply_stmt
          | entangle_stmt
          | superpose_stmt
+         | barrier_stmt
+         | phase_stmt
          | shots_decl
          | optimize_decl
          | simulator_decl
@@ -31,9 +33,12 @@ use_stmt: "use" "qiskit"
 qubits_decl: "qubits" ":" INT
 classical_decl: "classical" ":" INT
 
-apply_stmt: "apply" gate_call apply_targets
+apply_stmt: "apply" gate_call gate_modifier? apply_targets
 
-gate_call: GATE ("(" expr ")")?
+gate_call: GATE gate_params?
+gate_params: "(" expr ("," expr)* ")"
+gate_modifier: "inv"    -> gate_inverse
+             | "power" "(" expr ")"  -> gate_power
 
 // Expressions for parameters (numbers, names, pi) with +, -, *, /
 ?expr: expr "+" term   -> add
@@ -57,6 +62,10 @@ entangle_stmt: "entangle" INT "," INT
 
 superpose_stmt: "superpose" INT
 
+barrier_stmt: "barrier" (index_list)?
+
+phase_stmt: "phase" ":" expr
+
 shots_decl: "shots" ":" INT
 
 optimize_decl: "optimize" ":" INT
@@ -74,7 +83,7 @@ reset_stmt: "reset" index_list
 
 simulate_stmt: "simulate"
 
-GATE: /H|X|Y|Z|S|T|CX|CY|CZ|RX|RY|RZ|SWAP|CCX/
+GATE: /SXdg|Sdg|Tdg|CCX|SWAP|CX|CY|CZ|RX|RY|RZ|CP|SX|H|X|Y|Z|I|S|T|P|U/
 
 SIMTYPE: "default" | "statevector" | "unitary"
 simulator_decl: "simulator" ":" SIMTYPE
