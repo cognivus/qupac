@@ -1,11 +1,4 @@
-```
-# Qupac (Quantum Python Abstraction Compiler)
 
- A lightweight language to design quantum circuits and transpile them to Python code using Qiskit 2.x. Write simple gate instructions; Qupac parses, transpiles, and can run the generated Python for simulation.
-License
-- MIT
-
-```
 # Qupac (Quantum Python Abstraction Compiler)
 
 A lightweight language to design quantum circuits and transpile them to Python code using Qiskit 2.x. Write simple gate instructions; Qupac parses, transpiles, and can run the generated Python for simulation.
