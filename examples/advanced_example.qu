@@ -1,0 +1,19 @@
+use qiskit
+
+qubits: 4
+classical: 4
+
+// apply H to several qubits
+apply H to 0,1
+
+// double-controlled Toffoli: controls 0,1 target 2
+apply CCX from 0,1 to 2
+
+// reset qubit 2 then entangle with 3
+reset 2
+entangle 2,3
+
+// measure two qubits into classical bits
+measure 0,3 -> 0,3
+
+simulate

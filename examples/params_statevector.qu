@@ -1,0 +1,10 @@
+use qiskit
+
+qubits: 1
+
+apply RY(1.5708) to 0
+
+draw
+simulator: statevector
+shots: 1
+simulate

@@ -1,0 +1,9 @@
+use qiskit
+
+qubits: 2
+
+entangle 0,1
+
+noise depol p=0.02
+shots: 1024
+simulate

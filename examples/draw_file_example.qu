@@ -1,0 +1,9 @@
+use qiskit
+
+qubits: 2
+
+entangle 0,1
+
+draw file: "examples/circ.txt" text
+
+simulate

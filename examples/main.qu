@@ -1,0 +1,13 @@
+use qiskit
+
+qubits: 3
+classical: 3
+
+apply H to 0
+apply CX from 0 to 1
+apply CX from 1 to 2
+
+measure all
+
+simulate
+

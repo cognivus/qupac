@@ -1,0 +1,5 @@
+use qiskit
+
+qubits: 1
+apply RZ(pi/2) to 0
+simulate

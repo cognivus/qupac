@@ -1,0 +1,8 @@
+use qiskit
+
+qubits: 1
+
+apply RZ(theta) to 0
+
+draw
+# No simulation because parameter is unbound; use classical run after binding in Python
