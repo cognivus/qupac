@@ -45,16 +45,28 @@ class QupacTransformer(Transformer):
             raise ValueError("classical count must be >= 0")
         self.ir["classical"] = n
 
-    @v_args(inline=True)
-    def apply_stmt(self, gate_obj, targets):
-        # gate_obj can be a string gate name or a dict with gate+param_expr
+    def apply_stmt(self, items):
+        # items can be: [gate_obj, targets] or [gate_obj, modifier, targets]
+        if len(items) == 2:
+            gate_obj, targets = items
+            modifier = None
+        elif len(items) == 3:
+            gate_obj, modifier, targets = items
+        else:
+            raise ValueError(f"Unexpected apply_stmt items: {items}")
+        
+        # gate_obj can be a string gate name or a dict with gate+param_expr+params
         if isinstance(gate_obj, str):
             g = gate_obj
             op = {"op": "apply", "gate": g}
         else:
             g = gate_obj.get("gate")
             op = {"op": "apply", "gate": g}
-            if "param_expr" in gate_obj:
+            if "params" in gate_obj:
+                op["params"] = gate_obj["params"]
+                for s in gate_obj.get("param_symbols", []):
+                    self.ir["symbols"].add(s)
+            elif "param_expr" in gate_obj:
                 op["param_expr"] = gate_obj["param_expr"]
                 for s in gate_obj.get("param_symbols", []):
                     self.ir["symbols"].add(s)
@@ -67,19 +79,34 @@ class QupacTransformer(Transformer):
                     op["param_symbol"] = sym
                 else:
                     op["param_value"] = float(p)
+        if modifier:
+            op["modifier"] = modifier
         op.update(targets)
         self._append_op(op)
 
     @v_args(inline=True)
-    def gate_call(self, gate, param=None):
+    def gate_call(self, gate, params=None):
         g = str(gate)
-        if param is None:
+        if params is None:
             return g
-        # param is an expression dict with src and symbols
-        expr = param
-        for s in expr.get("symbols", set()):
-            self.ir["symbols"].add(s)
-        return {"gate": g, "param_expr": expr["src"], "param_symbols": list(expr.get("symbols", set()))}
+        # params is from gate_params which gives us a list of expr dicts
+        return {"gate": g, "params": params["params"], "param_symbols": params["symbols"]}
+
+    def gate_params(self, items):
+        # items are expression dicts
+        params_src = []
+        all_symbols = set()
+        for expr in items:
+            params_src.append(expr["src"])
+            all_symbols |= expr.get("symbols", set())
+        return {"params": params_src, "symbols": all_symbols}
+
+    def gate_inverse(self, _):
+        return {"type": "inverse"}
+
+    @v_args(inline=True)
+    def gate_power(self, exponent):
+        return {"type": "power", "exponent": exponent["src"], "symbols": exponent.get("symbols", set())}
 
     @v_args(inline=True)
     # Expression nodes for parameter expressions
@@ -120,6 +147,21 @@ class QupacTransformer(Transformer):
     def superpose_stmt(self, q):
         # superpose q -> H q
         self._append_op({"op": "apply", "gate": "H", "targets": [int(q)]})
+
+    def barrier_stmt(self, items):
+        # items can be empty (barrier all) or a list of qubits
+        if items:
+            qubits = [int(q) for q in items[0]]
+            self._append_op({"op": "barrier", "qubits": qubits})
+        else:
+            self._append_op({"op": "barrier"})
+
+    @v_args(inline=True)
+    def phase_stmt(self, expr):
+        # global phase
+        for s in expr.get("symbols", set()):
+            self.ir["symbols"].add(s)
+        self.ir["global_phase"] = expr["src"]
 
     @v_args(inline=True)
     def single_target(self, tgt):
