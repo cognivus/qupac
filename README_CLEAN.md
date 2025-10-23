@@ -21,6 +21,14 @@ A lightweight language to design quantum circuits and transpile them to Python c
 - Apply gate: `apply H to 0` or `apply CX from 0 to 1`
   - Entangle two qubits: `entangle 0,1` (shorthand for `apply CX from 0 to 1`)
   - Put a qubit in superposition: `superpose 0` (shorthand for `apply H to 0`)
+  - Gate modifiers: `apply H inv to 0` (inverse) or `apply X power(2) to 0` (power)
+- Parameterized gates: `apply RX(pi/2) to 0` or `apply U(theta, phi, lambda) to 0`
+  - Rotation gates: `RX`, `RY`, `RZ`, `P` (phase)
+  - Universal gate: `U(theta, phi, lambda)`
+  - Controlled phase: `apply CP(pi/4) from 0 to 1`
+- Additional single-qubit gates: `I` (identity), `Sdg` (S-dagger), `Tdg` (T-dagger), `SX` (sqrt-X), `SXdg` (sqrt-X-dagger)
+- Barrier: `barrier` (full circuit) or `barrier 0,2` (specific qubits)
+- Global phase: `phase: pi/4`
 - Measure all: `measure all`
 - Measure one: `measure 0 -> 0`
 - Execute: `simulate`
@@ -33,7 +41,7 @@ A lightweight language to design quantum circuits and transpile them to Python c
 
 ## Examples
 
-Basic:
+Basic Bell state:
 ```
 use qiskit
 qubits: 2
@@ -42,11 +50,70 @@ measure all
 simulate
 ```
 
-Superpose:
+Superposition:
 ```
 use qiskit
 qubits: 1
 superpose 0
+measure all
+simulate
+```
+
+Universal gate (U gate with 3 parameters):
+```
+use qiskit
+qubits: 1
+# U(theta, phi, lambda) - general single-qubit unitary
+apply U(pi/2, 0, pi) to 0
+measure all
+simulate
+```
+
+Phase gate and controlled-phase:
+```
+use qiskit
+qubits: 2
+# Apply phase rotation
+apply P(pi/4) to 0
+# Controlled-phase gate
+apply CP(pi/2) from 0 to 1
+measure all
+simulate
+```
+
+Gate modifiers (inverse and power):
+```
+use qiskit
+qubits: 2
+apply H to 0
+apply H inv to 0  # H^-1 (inverse)
+apply X power(2) to 1  # X^2
+measure all
+simulate
+```
+
+Additional single-qubit gates:
+```
+use qiskit
+qubits: 1
+apply Sdg to 0  # S-dagger (S^-1)
+apply Tdg to 0  # T-dagger (T^-1)
+apply SX to 0   # sqrt(X)
+apply SXdg to 0 # sqrt(X)-dagger
+measure all
+simulate
+```
+
+Barriers and global phase:
+```
+use qiskit
+qubits: 3
+phase: pi/8
+superpose 0
+barrier  # barrier on all qubits
+entangle 0,1
+barrier 0,1  # barrier on specific qubits
+apply H to 2
 measure all
 simulate
 ```
@@ -62,11 +129,13 @@ optimize: 1
 simulate
 ```
 
-Parameterized gates and statevector:
+Parameterized rotation gates:
 ```
 use qiskit
 qubits: 1
-apply RY(1.5708) to 0
+apply RX(pi/2) to 0
+apply RY(pi/3) to 0
+apply RZ(pi/4) to 0
 draw
 simulator: statevector
 shots: 1
