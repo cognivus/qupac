@@ -8,19 +8,23 @@ SUPPORTED_SINGLE_GATES = {
     "X": "x",
     "Y": "y",
     "Z": "z",
+    "I": "id",
     "S": "s",
+    "SDG": "sdg",
     "T": "t",
+    "TDG": "tdg",
+    "SX": "sx",
+    "SXDG": "sxdg",
 }
 
 SUPPORTED_CONTROL_GATES = {
     "CX": "cx",
     "CY": "cy",
     "CZ": "cz",
+    "CP": "cp",
     "SWAP": "swap",
+    "CCX": "ccx",
 }
-
-# Add CCX (Toffoli) to control gates mapping
-SUPPORTED_CONTROL_GATES["CCX"] = "ccx"
 
 
 class TranspileError(Exception):
@@ -91,6 +95,12 @@ def transpile_to_python(ir: Dict[str, Any]) -> str:
         for s in sorted(symbols):
             lines.append(f"{s} = Parameter('{s}')")
 
+    # Set global phase if specified
+    global_phase = ir.get("global_phase")
+    if global_phase:
+        lines.append(f"qc.global_phase = {global_phase}")
+        lines.append("")
+
     # Emit operations
     for op in ops:
         kind = op["op"]
@@ -106,6 +116,12 @@ def transpile_to_python(ir: Dict[str, Any]) -> str:
                     c, t = controls[0], targets[0]
                     if gate == "X":
                         lines.append(f"qc.cx({c}, {t})")
+                    elif gate == "CP":
+                        params = op.get("params")
+                        if not params or len(params) != 1:
+                            raise TranspileError("CP gate requires exactly 1 parameter")
+                        angle = params[0]
+                        lines.append(f"qc.cp({angle}, {c}, {t})")
                     else:
                         if gate not in SUPPORTED_CONTROL_GATES:
                             raise TranspileError(f"Gate '{gate}' not supported with 'from ... to ...'")
@@ -125,19 +141,54 @@ def transpile_to_python(ir: Dict[str, Any]) -> str:
                     raise TranspileError("Multi-control gates beyond 2 controls are not supported yet")
             elif not controls and len(targets) == 1:
                 # Single-qubit ops
-                if gate in {"RX", "RY", "RZ"}:
-                    param_value = op.get("param_value")
-                    param_symbol = op.get("param_symbol")
-                    param_expr = op.get("param_expr")
-                    if param_expr is not None:
-                        arg = param_expr
+                if gate in {"RX", "RY", "RZ", "P"}:
+                    params = op.get("params")
+                    if params:
+                        if len(params) != 1:
+                            raise TranspileError(f"Gate '{gate}' requires exactly 1 parameter")
+                        arg = params[0]
                     else:
-                        if param_value is None and param_symbol is None:
-                            raise TranspileError("Rotation gates RX/RY/RZ require an angle parameter")
-                        arg = param_symbol if param_symbol is not None else repr(float(param_value))
+                        param_value = op.get("param_value")
+                        param_symbol = op.get("param_symbol")
+                        param_expr = op.get("param_expr")
+                        if param_expr is not None:
+                            arg = param_expr
+                        else:
+                            if param_value is None and param_symbol is None:
+                                raise TranspileError(f"Gate '{gate}' requires an angle parameter")
+                            arg = param_symbol if param_symbol is not None else repr(float(param_value))
                     method = gate.lower()
                     t = targets[0]
-                    line = f"qc.{method}({arg}, {t})"
+                    modifier = op.get("modifier")
+                    if modifier:
+                        if modifier["type"] == "inverse":
+                            line = f"qc.{method}({arg}, {t}).inverse()"
+                        elif modifier["type"] == "power":
+                            exp = modifier["exponent"]
+                            line = f"qc.{method}({arg}, {t}).power({exp})"
+                    else:
+                        line = f"qc.{method}({arg}, {t})"
+                    if op.get("cond"):
+                        c = int(op["cond"]["c"])
+                        val = int(op["cond"]["val"])
+                        line += f".c_if(qc.clbits[{c}], {val})"
+                    lines.append(line)
+                    continue
+                if gate == "U":
+                    params = op.get("params")
+                    if not params or len(params) != 3:
+                        raise TranspileError("U gate requires exactly 3 parameters: U(theta, phi, lambda)")
+                    theta, phi, lam = params[0], params[1], params[2]
+                    t = targets[0]
+                    modifier = op.get("modifier")
+                    if modifier:
+                        if modifier["type"] == "inverse":
+                            line = f"qc.u({theta}, {phi}, {lam}, {t}).inverse()"
+                        elif modifier["type"] == "power":
+                            exp = modifier["exponent"]
+                            line = f"qc.u({theta}, {phi}, {lam}, {t}).power({exp})"
+                    else:
+                        line = f"qc.u({theta}, {phi}, {lam}, {t})"
                     if op.get("cond"):
                         c = int(op["cond"]["c"])
                         val = int(op["cond"]["val"])
@@ -148,7 +199,15 @@ def transpile_to_python(ir: Dict[str, Any]) -> str:
                     raise TranspileError(f"Single-qubit gate '{gate}' not supported")
                 method = SUPPORTED_SINGLE_GATES[gate]
                 t = targets[0]
-                line = f"qc.{method}({t})"
+                modifier = op.get("modifier")
+                if modifier:
+                    if modifier["type"] == "inverse":
+                        line = f"qc.{method}({t}).inverse()"
+                    elif modifier["type"] == "power":
+                        exp = modifier["exponent"]
+                        line = f"qc.{method}({t}).power({exp})"
+                else:
+                    line = f"qc.{method}({t})"
                 if op.get("cond"):
                     c = int(op["cond"]["c"])
                     val = int(op["cond"]["val"])
@@ -211,6 +270,14 @@ def transpile_to_python(ir: Dict[str, Any]) -> str:
             if c >= n_classical:
                 raise TranspileError("Classical index out of range; increase 'classical:'")
             lines.append(f"qc.measure({q}, {c})")
+
+        elif kind == "barrier":
+            qubits = op.get("qubits")
+            if qubits:
+                qubits_str = ", ".join(str(q) for q in qubits)
+                lines.append(f"qc.barrier({qubits_str})")
+            else:
+                lines.append("qc.barrier()")
 
         elif kind == "reset":
             q = int(op["q"]) if isinstance(op["q"], (int,)) else op["q"]
