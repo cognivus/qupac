@@ -22,10 +22,15 @@ SUPPORTED_CONTROL_GATES = {
     "CY": "cy",
     "CZ": "cz",
     "CP": "cp",
+    "CH": "ch",
+    "CS": "cs",
     "SWAP": "swap",
     "CCX": "ccx",
     "ECR": "ecr",
     "ISWAP": "iswap",
+    "RXX": "rxx",
+    "RYY": "ryy",
+    "RZZ": "rzz",
     "CRX": "crx",
     "CRY": "cry",
     "CRZ": "crz",
@@ -127,7 +132,7 @@ def transpile_to_python(ir: Dict[str, Any]) -> str:
                             raise TranspileError("CP gate requires exactly 1 parameter")
                         angle = params[0]
                         lines.append(f"qc.cp({angle}, {c}, {t})")
-                    elif gate in {"CRX", "CRY", "CRZ"}:
+                    elif gate in {"CRX", "CRY", "CRZ", "RXX", "RYY", "RZZ"}:
                         params = op.get("params")
                         if not params or len(params) != 1:
                             raise TranspileError(f"{gate} gate requires exactly 1 parameter")
@@ -303,6 +308,25 @@ def transpile_to_python(ir: Dict[str, Any]) -> str:
         elif kind == "save_statevector":
             label = op.get("label", "state")
             lines.append(f"qc.save_statevector(label='{label}')")
+
+        elif kind == "repeat":
+            count = op.get("count", 1)
+            body_ops = op.get("body", [])
+            lines.append(f"# Repeat {count} times")
+            lines.append(f"for _repeat_idx in range({count}):")
+            # Process body operations with indentation
+            saved_lines = lines
+            body_lines = []
+            for body_op in body_ops:
+                # Recursively handle body operations
+                # This is simplified - in practice we'd need to refactor to support nested contexts
+                if body_op["op"] == "apply":
+                    gate = body_op["gate"].upper()
+                    targets = body_op.get("targets", [])
+                    if targets and len(targets) == 1 and gate in SUPPORTED_SINGLE_GATES:
+                        method = SUPPORTED_SINGLE_GATES[gate]
+                        body_lines.append(f"    qc.{method}({targets[0]})")
+            lines.extend(body_lines)
 
         elif kind == "reset":
             q = int(op["q"]) if isinstance(op["q"], (int,)) else op["q"]
