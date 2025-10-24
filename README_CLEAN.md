@@ -31,8 +31,16 @@ A lightweight language to design quantum circuits and transpile them to Python c
   - `ECR` (Echoed Cross-Resonance): `apply ECR from 0 to 1`
   - `iSWAP`: `apply iSWAP from 0 to 1`
   - `SWAP`: `apply SWAP from 0 to 1`
+  - Parameterized two-qubit rotation gates:
+    - `RXX(angle)`: `apply RXX(pi/4) from 0 to 1`
+    - `RYY(angle)`: `apply RYY(pi/3) from 0 to 1`
+    - `RZZ(angle)`: `apply RZZ(pi/6) from 0 to 1`
+  - Controlled gates:
+    - `CH` (Controlled-H): `apply CH from 0 to 1`
+    - `CS` (Controlled-S): `apply CS from 0 to 1`
 - Additional single-qubit gates: `I` (identity), `Sdg` (S-dagger), `Tdg` (T-dagger), `SX` (sqrt-X), `SXdg` (sqrt-X-dagger)
 - Barrier: `barrier` (full circuit) or `barrier 0,2` (specific qubits)
+- Repeat loops: `repeat N ... end` - repeat operations N times
 - Delay: `delay(duration) on 0,1` - add timing delay to qubits
 - Global phase: `phase: pi/4`
 - Save statevector: `save statevector as label` - save current state for later retrieval
@@ -220,6 +228,35 @@ barrier 0,1
 apply CRX(pi/4) from 1 to 2
 apply iSWAP from 2 to 3
 save statevector as final_state
+measure all
+simulate
+```
+
+Repeat loops and parameterized two-qubit gates:
+```
+use qiskit
+qubits: 3
+repeat 3
+  apply H to 0
+end
+apply RXX(pi/4) from 0 to 1
+apply RYY(pi/3) from 1 to 2
+apply CH from 0 to 2
+measure all
+simulate
+```
+
+Controlled-S and RZZ gates:
+```
+use qiskit
+qubits: 2
+apply H to 0
+apply CS from 0 to 1
+apply RZZ(pi/6) from 0 to 1
+barrier
+repeat 2
+  apply X to 1
+end
 measure all
 simulate
 ```
