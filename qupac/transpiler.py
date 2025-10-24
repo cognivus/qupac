@@ -24,6 +24,11 @@ SUPPORTED_CONTROL_GATES = {
     "CP": "cp",
     "SWAP": "swap",
     "CCX": "ccx",
+    "ECR": "ecr",
+    "ISWAP": "iswap",
+    "CRX": "crx",
+    "CRY": "cry",
+    "CRZ": "crz",
 }
 
 
@@ -122,6 +127,13 @@ def transpile_to_python(ir: Dict[str, Any]) -> str:
                             raise TranspileError("CP gate requires exactly 1 parameter")
                         angle = params[0]
                         lines.append(f"qc.cp({angle}, {c}, {t})")
+                    elif gate in {"CRX", "CRY", "CRZ"}:
+                        params = op.get("params")
+                        if not params or len(params) != 1:
+                            raise TranspileError(f"{gate} gate requires exactly 1 parameter")
+                        angle = params[0]
+                        method = SUPPORTED_CONTROL_GATES[gate]
+                        lines.append(f"qc.{method}({angle}, {c}, {t})")
                     else:
                         if gate not in SUPPORTED_CONTROL_GATES:
                             raise TranspileError(f"Gate '{gate}' not supported with 'from ... to ...'")
@@ -278,6 +290,19 @@ def transpile_to_python(ir: Dict[str, Any]) -> str:
                 lines.append(f"qc.barrier({qubits_str})")
             else:
                 lines.append("qc.barrier()")
+
+        elif kind == "delay":
+            duration = op.get("duration")
+            qubits = op.get("qubits", [])
+            if qubits:
+                for q in qubits:
+                    lines.append(f"qc.delay({duration}, {q})")
+            else:
+                raise TranspileError("Delay requires qubit specification")
+
+        elif kind == "save_statevector":
+            label = op.get("label", "state")
+            lines.append(f"qc.save_statevector(label='{label}')")
 
         elif kind == "reset":
             q = int(op["q"]) if isinstance(op["q"], (int,)) else op["q"]
