@@ -13,6 +13,8 @@ statement: use_stmt
          | superpose_stmt
          | barrier_stmt
          | phase_stmt
+         | delay_stmt
+         | save_state_stmt
          | shots_decl
          | optimize_decl
          | simulator_decl
@@ -81,9 +83,13 @@ measure_stmt: "measure" "all"           -> measure_all
 
 reset_stmt: "reset" index_list
 
+delay_stmt: "delay" "(" expr ")" "on" index_list
+
+save_state_stmt: "save" "statevector" "as" NAME
+
 simulate_stmt: "simulate"
 
-GATE: /SXdg|Sdg|Tdg|CCX|SWAP|CX|CY|CZ|RX|RY|RZ|CP|SX|H|X|Y|Z|I|S|T|P|U/
+GATE: /CRX|CRY|CRZ|iSWAP|ECR|SXdg|Sdg|Tdg|CCX|SWAP|CX|CY|CZ|RX|RY|RZ|CP|SX|H|X|Y|Z|I|S|T|P|U/
 
 SIMTYPE: "default" | "statevector" | "unitary"
 simulator_decl: "simulator" ":" SIMTYPE
