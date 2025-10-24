@@ -163,6 +163,19 @@ class QupacTransformer(Transformer):
             self.ir["symbols"].add(s)
         self.ir["global_phase"] = expr["src"]
 
+    def delay_stmt(self, items):
+        # delay(duration) on qubits
+        duration_expr = items[0]
+        qubits = list(items[1])
+        for s in duration_expr.get("symbols", set()):
+            self.ir["symbols"].add(s)
+        self._append_op({"op": "delay", "duration": duration_expr["src"], "qubits": qubits})
+
+    @v_args(inline=True)
+    def save_state_stmt(self, label):
+        # save statevector as label
+        self._append_op({"op": "save_statevector", "label": str(label)})
+
     @v_args(inline=True)
     def single_target(self, tgt):
         return {"targets": [int(tgt)]}
