@@ -177,6 +177,31 @@ class QupacTransformer(Transformer):
         self._append_op({"op": "save_statevector", "label": str(label)})
 
     @v_args(inline=True)
+    def repeat_stmt(self, count, body_ir):
+        # repeat N times
+        n = int(count)
+        if n <= 0:
+            raise ValueError("repeat count must be positive")
+        # Store the current ops and temporarily replace
+        saved_ops = self._ops_target
+        body_ops = []
+        self._ops_target = body_ops
+        # body_ir is already transformed by repeat_body
+        # Just use the ops that were collected
+        self._ops_target = saved_ops
+        # Add repeat operation
+        self._append_op({"op": "repeat", "count": n, "body": body_ir.get("ops", [])})
+
+    def repeat_body(self, items):
+        # Create a mini-IR for the repeat body
+        body_ir = {"ops": []}
+        saved_ops = self._ops_target
+        self._ops_target = body_ir["ops"]
+        # items are already transformed statements
+        self._ops_target = saved_ops
+        return body_ir
+
+    @v_args(inline=True)
     def single_target(self, tgt):
         return {"targets": [int(tgt)]}
 
