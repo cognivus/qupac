@@ -26,9 +26,16 @@ A lightweight language to design quantum circuits and transpile them to Python c
   - Rotation gates: `RX`, `RY`, `RZ`, `P` (phase)
   - Universal gate: `U(theta, phi, lambda)`
   - Controlled phase: `apply CP(pi/4) from 0 to 1`
+  - Controlled rotations: `CRX`, `CRY`, `CRZ` - `apply CRX(pi/2) from 0 to 1`
+- Two-qubit gates:
+  - `ECR` (Echoed Cross-Resonance): `apply ECR from 0 to 1`
+  - `iSWAP`: `apply iSWAP from 0 to 1`
+  - `SWAP`: `apply SWAP from 0 to 1`
 - Additional single-qubit gates: `I` (identity), `Sdg` (S-dagger), `Tdg` (T-dagger), `SX` (sqrt-X), `SXdg` (sqrt-X-dagger)
 - Barrier: `barrier` (full circuit) or `barrier 0,2` (specific qubits)
+- Delay: `delay(duration) on 0,1` - add timing delay to qubits
 - Global phase: `phase: pi/4`
+- Save statevector: `save statevector as label` - save current state for later retrieval
 - Measure all: `measure all`
 - Measure one: `measure 0 -> 0`
 - Execute: `simulate`
@@ -149,6 +156,71 @@ qubits: 2
 entangle 0,1
 noise depol p=0.02
 shots: 2048
+simulate
+```
+
+Controlled rotation gates (CRX, CRY, CRZ):
+```
+use qiskit
+qubits: 3
+apply H to 0
+apply CRX(pi/4) from 0 to 1
+apply CRY(pi/3) from 1 to 2
+apply CRZ(pi/2) from 0 to 2
+measure all
+simulate
+```
+
+ECR and iSWAP gates:
+```
+use qiskit
+qubits: 2
+# ECR (Echoed Cross-Resonance) gate
+apply ECR from 0 to 1
+# iSWAP gate
+apply iSWAP from 0 to 1
+measure all
+simulate
+```
+
+Delay operations (timing control):
+```
+use qiskit
+qubits: 3
+apply H to 0
+delay(100) on 0
+entangle 0,1
+delay(50) on 1,2
+measure all
+simulate
+```
+
+Save statevector for analysis:
+```
+use qiskit
+qubits: 2
+apply H to 0
+save statevector as superposition_state
+entangle 0,1
+save statevector as bell_state
+simulator: statevector
+shots: 1
+simulate
+```
+
+Advanced circuit with multiple new features:
+```
+use qiskit
+qubits: 4
+phase: pi/8
+apply H to 0
+apply ECR from 0 to 1
+delay(100) on 1
+barrier 0,1
+apply CRX(pi/4) from 1 to 2
+apply iSWAP from 2 to 3
+save statevector as final_state
+measure all
 simulate
 ```
 
